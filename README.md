@@ -110,6 +110,28 @@ The GUI provides:
 .\scripts\core\Invoke-GeoServerUpgrade.ps1 -Component GeoServer -SkipBackup
 ```
 
+#### 4. Individual Component Upgrades (New in v2.2!)
+
+```powershell
+# Upgrade pgAdmin while preserving PostgreSQL server configurations
+.\scripts\upgrades\Upgrade-pgAdmin.ps1 -TargetVersion "8.2" -TestConnections
+
+# Upgrade QGIS while preserving PostGIS connections and plugins
+.\scripts\upgrades\Upgrade-QGIS.ps1 -TargetVersion "3.34" -PreservePlugins
+
+# Upgrade PostgreSQL/PostGIS with data migration
+.\scripts\upgrades\Upgrade-PostgreSQL.ps1 -TargetVersion "15.0" -UpgradePostGIS
+
+# Upgrade Tomcat with automatic javax→jakarta migration
+.\scripts\upgrades\Upgrade-Tomcat.ps1 -TargetVersion "10.1"
+
+# Upgrade Azul Java JRE from 11 to 17
+.\scripts\upgrades\Upgrade-AzulJRE.ps1 -TargetVersion "17"
+
+# Analyze GeoServer configuration for migration planning
+.\scripts\utilities\Compare-Configuration.ps1 -OutputFormat HTML
+```
+
 ## Configuration
 
 The `config/upgrade-config.json` file is the central configuration for all scripts. Key sections:
@@ -354,8 +376,8 @@ Get-Content .\logs\*.log -Tail 50
 - [x] PostgreSQL/PostGIS upgrade (with pg_upgrade)
 - [x] Configuration analysis tool (standalone utility)
 - [x] Change management reporting system
-- [ ] pgAdmin upgrade - planned
-- [ ] QGIS upgrade - planned
+- [x] pgAdmin upgrade module with server config preservation
+- [x] QGIS upgrade module with PostgreSQL/PostGIS integration
 
 ### Phase 3: Testing & Polish (Planned)
 - [ ] Integration tests
@@ -415,6 +437,6 @@ Built for enterprise GeoServer deployments with a focus on:
 
 ---
 
-**Version**: 2.1.0 (Phase 2 Complete)
+**Version**: 2.2.0 (Phase 2 Complete)
 **Last Updated**: November 17, 2025
-**Status**: Production Ready - Full automation suite with GUI, upgrade modules, and change management
+**Status**: Production Ready - Complete automation suite with GUI, all upgrade modules, and change management

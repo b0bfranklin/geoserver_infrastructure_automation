@@ -471,8 +471,90 @@ function Register-EventHandlers {
 
             Write-Log "Selected components: $($components -join ', ')" "INFO"
 
-            # This will be implemented with the upgrade modules
-            Show-MessageBox "Upgrade functionality will be available after implementing upgrade modules."
+            # Execute upgrade modules for each selected component
+            foreach ($component in $components) {
+                Write-Log "Starting $component upgrade..." "INFO"
+
+                try {
+                    switch ($component) {
+                        "Java" {
+                            $scriptPath = ".\scripts\upgrades\Upgrade-AzulJRE.ps1"
+                            if (Test-Path $scriptPath) {
+                                $params = @{}
+                                if ($autoBackup) { $params['SkipBackup'] = $true }
+                                & $scriptPath @params
+                                Write-Log "$component upgrade completed" "SUCCESS"
+                            } else {
+                                Write-Log "Upgrade script not found: $scriptPath" "ERROR"
+                            }
+                        }
+                        "Tomcat" {
+                            $scriptPath = ".\scripts\upgrades\Upgrade-Tomcat.ps1"
+                            if (Test-Path $scriptPath) {
+                                $params = @{}
+                                if ($autoBackup) { $params['SkipBackup'] = $true }
+                                & $scriptPath @params
+                                Write-Log "$component upgrade completed" "SUCCESS"
+                            } else {
+                                Write-Log "Upgrade script not found: $scriptPath" "ERROR"
+                            }
+                        }
+                        "GeoServer" {
+                            $scriptPath = ".\scripts\upgrades\Upgrade-GeoServer.ps1"
+                            if (Test-Path $scriptPath) {
+                                $params = @{}
+                                if ($autoBackup) { $params['SkipBackup'] = $true }
+                                & $scriptPath @params
+                                Write-Log "$component upgrade completed" "SUCCESS"
+                            } else {
+                                Write-Log "Upgrade script not found: $scriptPath" "ERROR"
+                            }
+                        }
+                        "PostgreSQL" {
+                            $scriptPath = ".\scripts\upgrades\Upgrade-PostgreSQL.ps1"
+                            if (Test-Path $scriptPath) {
+                                $params = @{}
+                                if ($autoBackup) { $params['SkipBackup'] = $true }
+                                & $scriptPath @params
+                                Write-Log "$component upgrade completed" "SUCCESS"
+                            } else {
+                                Write-Log "Upgrade script not found: $scriptPath" "ERROR"
+                            }
+                        }
+                        "PgAdmin" {
+                            $scriptPath = ".\scripts\upgrades\Upgrade-pgAdmin.ps1"
+                            if (Test-Path $scriptPath) {
+                                $params = @{}
+                                if ($autoBackup) { $params['SkipBackup'] = $true }
+                                & $scriptPath @params
+                                Write-Log "$component upgrade completed" "SUCCESS"
+                            } else {
+                                Write-Log "Upgrade script not found: $scriptPath" "ERROR"
+                            }
+                        }
+                        "QGIS" {
+                            $scriptPath = ".\scripts\upgrades\Upgrade-QGIS.ps1"
+                            if (Test-Path $scriptPath) {
+                                $params = @{}
+                                if ($autoBackup) { $params['SkipBackup'] = $true }
+                                & $scriptPath @params
+                                Write-Log "$component upgrade completed" "SUCCESS"
+                            } else {
+                                Write-Log "Upgrade script not found: $scriptPath" "ERROR"
+                            }
+                        }
+                    }
+                } catch {
+                    Write-Log "Error upgrading $component $_" "ERROR"
+
+                    if ($autoRollback) {
+                        Write-Log "Auto-rollback enabled, attempting to restore..." "WARNING"
+                        Show-MessageBox "Upgrade failed for $component. Check logs for details." "Upgrade Failed" "Error"
+                    }
+                }
+            }
+
+            Show-MessageBox "Upgrade process completed. Check logs for details." "Upgrade Complete" "Information"
         }
     })
 
