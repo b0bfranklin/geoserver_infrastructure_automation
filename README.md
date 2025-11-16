@@ -51,7 +51,22 @@ This automation suite provides comprehensive tooling for managing GeoServer depl
    pip install -r requirements.txt
    ```
 
-### Basic Usage
+### Using the GUI (New in v2.0!)
+
+Launch the graphical interface for point-and-click management:
+
+```powershell
+.\Start-GeoServerGUI.ps1
+```
+
+The GUI provides:
+- **Dashboard**: Real-time health monitoring
+- **Backup & Restore**: Visual backup creation and restore management
+- **Component Upgrades**: Select Java, Tomcat, GeoServer, PostgreSQL, pgAdmin, or QGIS
+- **Configuration Analysis**: Migration analysis and comparison
+- **Settings**: Configure paths and preferences
+
+### Command-Line Usage
 
 #### 1. Health Check (Safe to run anytime)
 
@@ -329,14 +344,21 @@ Get-Content .\logs\*.log -Tail 50
 - [x] PowerShell modules
 - [x] Configuration templates
 
-### Phase 2: Testing Framework (In Progress)
+### Phase 2: Advanced Features 🚀 IN PROGRESS
+- [x] WPF GUI for user-friendly management
+- [x] Self-contained package manager (no Python/external deps)
+- [x] Restore/rollback functionality
+- [x] Azul Zulu JRE upgrade module (11 → 17/21)
+- [ ] Tomcat upgrade module (9.x → 10.x) - framework ready
+- [ ] GeoServer migration (2.26.2 → current) - framework ready
+- [ ] PostgreSQL/PostGIS upgrade - framework ready
+- [ ] pgAdmin upgrade - framework ready
+- [ ] QGIS upgrade - framework ready
+- [ ] Configuration analysis tool - planned
+
+### Phase 3: Testing & Polish (Planned)
 - [ ] Integration tests
 - [ ] Performance testing (JMeter)
-- [ ] Database validation
-- [ ] WMS/WFS testing
-
-### Phase 3: Polish & Documentation (Planned)
-- [ ] Restore/rollback script
 - [ ] Email notifications
 - [ ] Configuration drift detection
 - [ ] Comprehensive documentation
@@ -392,6 +414,6 @@ Built for enterprise GeoServer deployments with a focus on:
 
 ---
 
-**Version**: 1.0.0 (Phase 1)
+**Version**: 2.0.0 (Phase 2 - In Progress)
 **Last Updated**: November 17, 2025
-**Status**: Phase 1 Complete - Core Functionality Ready
+**Status**: Phase 2 Development - GUI, Package Manager, and Upgrade Modules
