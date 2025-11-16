@@ -1,0 +1,152 @@
+{
+  "_comment": "GeoServer Infrastructure Automation - Upgrade Configuration Template",
+  "_instructions": "Copy this file to 'upgrade-config.json' and customize with your environment settings",
+
+  "environment": {
+    "serverName": "GeoServer-Prod",
+    "description": "Production GeoServer Environment",
+
+    "paths": {
+      "tomcatBase": "C:\\Program Files\\Apache\\Tomcat",
+      "geoserverDataDir": "D:\\GeoServer\\data",
+      "backupLocation": "E:\\Backups\\GeoServer",
+      "javaHome": "C:\\Program Files\\Java\\jdk-17",
+      "logsDirectory": ".\\logs"
+    },
+
+    "tomcatInstances": [
+      {
+        "name": "instance1",
+        "displayName": "GeoServer Instance 1",
+        "path": "C:\\Program Files\\Apache\\Tomcat\\instance1",
+        "port": 8080,
+        "shutdownPort": 8005,
+        "ajpPort": 8009,
+        "serviceName": "Tomcat9-Instance1"
+      },
+      {
+        "name": "instance2",
+        "displayName": "GeoServer Instance 2",
+        "path": "C:\\Program Files\\Apache\\Tomcat\\instance2",
+        "port": 8081,
+        "shutdownPort": 8006,
+        "ajpPort": 8010,
+        "serviceName": "Tomcat9-Instance2"
+      }
+    ],
+
+    "loadBalancer": {
+      "type": "apache",
+      "enabled": true,
+      "configPath": "C:\\Apache24\\conf\\httpd.conf",
+      "serviceName": "Apache2.4"
+    }
+  },
+
+  "versions": {
+    "_comment": "Target versions for upgrades - leave empty for latest stable",
+    "targetJavaVersion": "17.0.9",
+    "targetTomcatVersion": "9.0.85",
+    "targetGeoServerVersion": "2.24.2",
+
+    "downloadUrls": {
+      "javaBase": "https://corretto.aws/downloads/latest/amazon-corretto-17-x64-windows-jdk.zip",
+      "tomcatBase": "https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.85/bin/apache-tomcat-9.0.85-windows-x64.zip",
+      "geoserverBase": "https://sourceforge.net/projects/geoserver/files/GeoServer/2.24.2/geoserver-2.24.2-war.zip/download"
+    }
+  },
+
+  "upgrade": {
+    "enableAutoBackup": true,
+    "enableAutoRollback": true,
+    "maxRollbackAttempts": 3,
+    "backupRetentionDays": 30,
+
+    "healthCheckRetries": 5,
+    "healthCheckInterval": 30,
+    "serviceStartTimeout": 120,
+    "serviceStopTimeout": 60,
+
+    "validationSteps": [
+      "CheckDiskSpace",
+      "CheckServiceStatus",
+      "ValidateConfiguration",
+      "TestDatabaseConnectivity",
+      "CheckLoadBalancer"
+    ]
+  },
+
+  "databases": {
+    "postgresql": {
+      "enabled": true,
+      "server": "db-server.example.com",
+      "port": 5432,
+      "database": "gis_data",
+      "username": "geoserver_user",
+      "_passwordNote": "Use Windows Credential Manager or environment variable",
+      "sslMode": "prefer",
+      "connectionTimeout": 30
+    },
+
+    "mssql": {
+      "enabled": false,
+      "server": "sql-server.example.com",
+      "port": 1433,
+      "database": "geoserver_db",
+      "username": "geoserver_user",
+      "_passwordNote": "Use Windows Credential Manager or environment variable",
+      "encrypt": true,
+      "trustServerCertificate": false,
+      "connectionTimeout": 30
+    }
+  },
+
+  "notifications": {
+    "emailEnabled": false,
+    "smtpServer": "smtp.example.com",
+    "smtpPort": 587,
+    "useSsl": true,
+    "fromAddress": "geoserver-automation@example.com",
+    "toAddress": "admin@example.com",
+    "_smtpPasswordNote": "Use Windows Credential Manager or environment variable",
+
+    "notificationEvents": [
+      "UpgradeStart",
+      "UpgradeComplete",
+      "UpgradeFailed",
+      "RollbackInitiated",
+      "RollbackComplete",
+      "HealthCheckFailed"
+    ]
+  },
+
+  "logging": {
+    "level": "INFO",
+    "enableConsole": true,
+    "enableFile": true,
+    "logFilePath": ".\\logs\\geoserver-automation.log",
+    "maxLogSizeMB": 50,
+    "maxLogFiles": 10,
+    "includeTimestamp": true,
+    "includeLevel": true
+  },
+
+  "security": {
+    "validateDigitalSignatures": false,
+    "allowUnsignedPackages": true,
+    "verifySslCertificates": true,
+    "credentialSource": "WindowsCredentialManager",
+    "_credentialSourceOptions": "WindowsCredentialManager, EnvironmentVariable, ConfigFile"
+  },
+
+  "advanced": {
+    "parallelUpgrades": false,
+    "enableDebugMode": false,
+    "createSystemRestore": false,
+    "useLocalMirror": false,
+    "localMirrorPath": "",
+    "proxyServer": "",
+    "proxyPort": 0,
+    "bypassProxyForLocal": true
+  }
+}
