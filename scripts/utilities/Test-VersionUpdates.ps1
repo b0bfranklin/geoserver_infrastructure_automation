@@ -80,9 +80,44 @@ param(
 
 #Requires -Version 7.0
 
+# ============================================================================
+# REPOSITORY ROOT DETECTION
+# ============================================================================
+
+# Determine repository root (works regardless of execution directory)
+$script:RepositoryRoot = if ($PSScriptRoot) {
+    # Scripts are in scripts/utilities/, so go up 2 levels
+    Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+} else {
+    # Fallback for interactive sessions
+    Get-Location | Select-Object -ExpandProperty Path
+}
+
+# Validate repository root
+if (-not (Test-Path (Join-Path $script:RepositoryRoot "config"))) {
+    throw "Repository root detection failed. Expected config directory at: $script:RepositoryRoot"
+}
+
+# Determine log directory (platform-aware)
+$script:LogDirectory = if ($env:GEOSERVER_LOG_DIR) {
+    # Use environment variable if set
+    $env:GEOSERVER_LOG_DIR
+} elseif ($IsWindows) {
+    # Windows default
+    "C:\GeoServerLogs"
+} else {
+    # Linux/macOS default
+    Join-Path $script:RepositoryRoot "logs"
+}
+
+# Ensure log directory exists
+if (-not (Test-Path $script:LogDirectory)) {
+    New-Item -Path $script:LogDirectory -ItemType Directory -Force | Out-Null
+}
+
 # Script variables
-$script:LogPath = "C:\GeoServerLogs\version-check-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
-$script:ConfigPath = ".\config\upgrade-config.json"
+$script:LogPath = Join-Path $script:LogDirectory "version-check-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+$script:ConfigPath = Join-Path $script:RepositoryRoot "config\upgrade-config.json"
 $script:Config = $null
 $script:VersionCheckResults = @()
 
@@ -585,7 +620,7 @@ function New-HTMLReport {
 </html>
 "@
 
-    $reportPath = if ($OutputPath) { $OutputPath } else { "C:\GeoServerLogs\version-check-report-$(Get-Date -Format 'yyyyMMdd-HHmmss').html" }
+    $reportPath = if ($OutputPath) { $OutputPath } else { Join-Path $script:LogDirectory "version-check-report-$(Get-Date -Format 'yyyyMMdd-HHmmss').html" }
     $html | Set-Content -Path $reportPath
     Write-LogEntry "HTML report generated: $reportPath" -Level SUCCESS
 
@@ -632,7 +667,7 @@ function Send-VersionNotifications {
     .SYNOPSIS
         Sends email notifications for version updates and security issues.
     #>
-    $emailScript = ".\scripts\utilities\Send-EmailNotification.ps1"
+    $emailScript = Join-Path $script:RepositoryRoot "scripts\utilities\Send-EmailNotification.ps1"
     if (-not (Test-Path $emailScript)) {
         Write-LogEntry "Email notification script not found" -Level WARNING
         return
@@ -723,7 +758,7 @@ try {
             Write-LogEntry "Report saved to: $reportPath" -Level SUCCESS
         }
         'JSON' {
-            $jsonPath = if ($OutputPath) { $OutputPath } else { "C:\GeoServerLogs\version-check-$(Get-Date -Format 'yyyyMMdd-HHmmss').json" }
+            $jsonPath = if ($OutputPath) { $OutputPath } else { Join-Path $script:LogDirectory "version-check-$(Get-Date -Format 'yyyyMMdd-HHmmss').json" }
             $script:VersionCheckResults | ConvertTo-Json -Depth 10 | Set-Content -Path $jsonPath
             Write-LogEntry "JSON output saved to: $jsonPath" -Level SUCCESS
         }

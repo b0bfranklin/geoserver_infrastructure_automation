@@ -78,8 +78,7 @@ param(
     [switch]$AutoRollback,
 
     [Parameter(Mandatory=$false, HelpMessage="Path to configuration file")]
-    [ValidateScript({Test-Path $_ -PathType Leaf})]
-    [string]$ConfigPath = ".\config\upgrade-config.json",
+    [string]$ConfigPath,
 
     [Parameter(Mandatory=$false, HelpMessage="Preview upgrade without making changes")]
     [switch]$WhatIf
@@ -87,6 +86,34 @@ param(
 
 #Requires -Version 7.0
 #Requires -RunAsAdministrator
+
+# ============================================================================
+# REPOSITORY ROOT DETECTION
+# ============================================================================
+
+# Determine repository root (works regardless of execution directory)
+$script:RepositoryRoot = if ($PSScriptRoot) {
+    # Scripts are in scripts/core/, so go up 2 levels
+    Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+} else {
+    # Fallback for interactive sessions
+    Get-Location | Select-Object -ExpandProperty Path
+}
+
+# Validate repository root
+if (-not (Test-Path (Join-Path $script:RepositoryRoot "config"))) {
+    throw "Repository root detection failed. Expected config directory at: $script:RepositoryRoot"
+}
+
+# Set default ConfigPath if not provided
+if (-not $ConfigPath) {
+    $ConfigPath = Join-Path $script:RepositoryRoot "config\upgrade-config.json"
+}
+
+# Validate ConfigPath exists
+if (-not (Test-Path $ConfigPath -PathType Leaf)) {
+    throw "Configuration file not found: $ConfigPath"
+}
 
 # ============================================================================
 # SCRIPT INITIALIZATION

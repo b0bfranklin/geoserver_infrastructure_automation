@@ -45,9 +45,38 @@ param(
 
 #Requires -Version 7.0
 
+# Repository root (script is at root level)
+$script:RepositoryRoot = if ($PSScriptRoot) {
+    $PSScriptRoot
+} else {
+    Get-Location | Select-Object -ExpandProperty Path
+}
+
+# Validate repository root
+if (-not (Test-Path (Join-Path $script:RepositoryRoot "config"))) {
+    throw "Repository root detection failed. Expected config directory at: $script:RepositoryRoot"
+}
+
+# Determine log directory (platform-aware)
+$script:LogDirectory = if ($env:GEOSERVER_LOG_DIR) {
+    # Use environment variable if set
+    $env:GEOSERVER_LOG_DIR
+} elseif ($IsWindows) {
+    # Windows default
+    "C:\GeoServerLogs"
+} else {
+    # Linux/macOS default
+    Join-Path $script:RepositoryRoot "logs"
+}
+
+# Ensure log directory exists
+if (-not (Test-Path $script:LogDirectory)) {
+    New-Item -Path $script:LogDirectory -ItemType Directory -Force | Out-Null
+}
+
 # Script variables
-$script:WebRoot = Join-Path $PSScriptRoot "web"
-$script:LogsPath = "C:\GeoServerLogs"
+$script:WebRoot = Join-Path $script:RepositoryRoot "web"
+$script:LogsPath = $script:LogDirectory
 $script:HttpListener = $null
 
 #region HTTP Server
@@ -255,12 +284,57 @@ try {
     if (-not (Test-Path $script:WebRoot)) {
         Write-Host "Web directory not found, creating: $script:WebRoot" -ForegroundColor Yellow
         New-Item -Path $script:WebRoot -ItemType Directory -Force | Out-Null
+    }
 
-        # Create default dashboard if it doesn't exist
-        if (-not (Test-Path (Join-Path $script:WebRoot "dashboard.html"))) {
-            Write-Host "Creating default dashboard HTML..." -ForegroundColor Yellow
-            # Dashboard will be created in next step
-        }
+    # Ensure dashboard.html exists
+    $dashboardPath = Join-Path $script:WebRoot "dashboard.html"
+    if (-not (Test-Path $dashboardPath)) {
+        Write-Host "Creating default dashboard HTML..." -ForegroundColor Yellow
+        $defaultDashboard = @"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoServer Infrastructure Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; }
+        .status { background: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px; }
+        a { color: #3498db; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        ul { line-height: 1.8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗺️ GeoServer Infrastructure Dashboard</h1>
+        <div class="status">
+            <strong>Dashboard is initializing...</strong>
+            <p>The full dashboard HTML will be available once the system is configured.</p>
+        </div>
+        <h2>Available API Endpoints</h2>
+        <p>You can access the following API endpoints for monitoring:</p>
+        <ul>
+            <li><a href="/api/health">/api/health</a> - Current system health status</li>
+            <li><a href="/api/history">/api/history</a> - Historical upgrade and test data</li>
+            <li><a href="/api/logs">/api/logs</a> - List of available log files</li>
+        </ul>
+        <h2>Next Steps</h2>
+        <p>To get the full dashboard experience, ensure that:</p>
+        <ul>
+            <li>Configuration file exists at <code>config/upgrade-config.json</code></li>
+            <li>GeoServer services are running</li>
+            <li>Log files are being generated in the configured log directory</li>
+        </ul>
+        <p><em>GeoServer Infrastructure Automation Suite v3.0.0</em></p>
+    </div>
+</body>
+</html>
+"@
+        Set-Content -Path $dashboardPath -Value $defaultDashboard -Encoding UTF8
+        Write-Host "Default dashboard created at: $dashboardPath" -ForegroundColor Green
     }
 
     # Start HTTP server

@@ -22,6 +22,23 @@
 #Requires -Version 7.0
 
 # ============================================================================
+# REPOSITORY ROOT DETECTION
+# ============================================================================
+
+# Determine repository root (works regardless of execution directory)
+$script:RepositoryRoot = if ($PSScriptRoot) {
+    $PSScriptRoot
+} else {
+    # Fallback for interactive sessions
+    Get-Location | Select-Object -ExpandProperty Path
+}
+
+# Validate repository root
+if (-not (Test-Path (Join-Path $script:RepositoryRoot "config"))) {
+    throw "Repository root detection failed. Expected config directory at: $script:RepositoryRoot"
+}
+
+# ============================================================================
 # GUI INITIALIZATION
 # ============================================================================
 
@@ -31,7 +48,7 @@ Add-Type -AssemblyName WindowsBase
 Add-Type -AssemblyName System.Windows.Forms
 
 # Script variables
-$script:ConfigPath = ".\config\upgrade-config.json"
+$script:ConfigPath = Join-Path $script:RepositoryRoot "config\upgrade-config.json"
 $script:Config = $null
 
 # ============================================================================
@@ -386,7 +403,8 @@ function Register-EventHandlers {
     $Window.FindName('btnRefreshHealth').Add_Click({
         Write-Log "Refreshing health status..." "INFO"
         try {
-            $result = & ".\scripts\core\Get-GeoServerHealth.ps1" -OutputFormat Console
+            $healthScript = Join-Path $script:RepositoryRoot "scripts\core\Get-GeoServerHealth.ps1"
+            $result = & $healthScript -OutputFormat Console
             Write-Log "Health check completed" "SUCCESS"
         }
         catch {
@@ -397,8 +415,9 @@ function Register-EventHandlers {
     $Window.FindName('btnExportHealthHTML').Add_Click({
         Write-Log "Generating HTML health report..." "INFO"
         try {
-            $outputPath = ".\reports\health-$(Get-Date -Format 'yyyy-MM-dd_HHmmss').html"
-            & ".\scripts\core\Get-GeoServerHealth.ps1" -OutputFormat HTML -OutputPath $outputPath
+            $outputPath = Join-Path $script:RepositoryRoot "reports\health-$(Get-Date -Format 'yyyy-MM-dd_HHmmss').html"
+            $healthScript = Join-Path $script:RepositoryRoot "scripts\core\Get-GeoServerHealth.ps1"
+            & $healthScript -OutputFormat HTML -OutputPath $outputPath
             Write-Log "HTML report saved to: $outputPath" "SUCCESS"
             Show-MessageBox "Health report saved to:`n$outputPath"
         }
@@ -423,7 +442,8 @@ function Register-EventHandlers {
                 RetentionDays = $retention
             }
 
-            & ".\scripts\core\Backup-GeoServerEnvironment.ps1" @params
+            $backupScript = Join-Path $script:RepositoryRoot "scripts\core\Backup-GeoServerEnvironment.ps1"
+            & $backupScript @params
             Write-Log "Backup created successfully" "SUCCESS"
             Show-MessageBox "Backup created successfully!"
         }
@@ -437,7 +457,8 @@ function Register-EventHandlers {
     $Window.FindName('btnBackupWhatIf').Add_Click({
         Write-Log "Running backup preview (WhatIf mode)..." "INFO"
         try {
-            & ".\scripts\core\Backup-GeoServerEnvironment.ps1" -WhatIf
+            $backupScript = Join-Path $script:RepositoryRoot "scripts\core\Backup-GeoServerEnvironment.ps1"
+            & $backupScript -WhatIf
             Write-Log "Backup preview completed" "SUCCESS"
         }
         catch {
@@ -478,7 +499,7 @@ function Register-EventHandlers {
                 try {
                     switch ($component) {
                         "Java" {
-                            $scriptPath = ".\scripts\upgrades\Upgrade-AzulJRE.ps1"
+                            $scriptPath = Join-Path $script:RepositoryRoot "scripts\upgrades\Upgrade-AzulJRE.ps1"
                             if (Test-Path $scriptPath) {
                                 $params = @{}
                                 if ($autoBackup) { $params['SkipBackup'] = $true }
@@ -489,7 +510,7 @@ function Register-EventHandlers {
                             }
                         }
                         "Tomcat" {
-                            $scriptPath = ".\scripts\upgrades\Upgrade-Tomcat.ps1"
+                            $scriptPath = Join-Path $script:RepositoryRoot "scripts\upgrades\Upgrade-Tomcat.ps1"
                             if (Test-Path $scriptPath) {
                                 $params = @{}
                                 if ($autoBackup) { $params['SkipBackup'] = $true }
@@ -500,7 +521,7 @@ function Register-EventHandlers {
                             }
                         }
                         "GeoServer" {
-                            $scriptPath = ".\scripts\upgrades\Upgrade-GeoServer.ps1"
+                            $scriptPath = Join-Path $script:RepositoryRoot "scripts\upgrades\Upgrade-GeoServer.ps1"
                             if (Test-Path $scriptPath) {
                                 $params = @{}
                                 if ($autoBackup) { $params['SkipBackup'] = $true }
@@ -511,7 +532,7 @@ function Register-EventHandlers {
                             }
                         }
                         "PostgreSQL" {
-                            $scriptPath = ".\scripts\upgrades\Upgrade-PostgreSQL.ps1"
+                            $scriptPath = Join-Path $script:RepositoryRoot "scripts\upgrades\Upgrade-PostgreSQL.ps1"
                             if (Test-Path $scriptPath) {
                                 $params = @{}
                                 if ($autoBackup) { $params['SkipBackup'] = $true }
@@ -522,7 +543,7 @@ function Register-EventHandlers {
                             }
                         }
                         "PgAdmin" {
-                            $scriptPath = ".\scripts\upgrades\Upgrade-pgAdmin.ps1"
+                            $scriptPath = Join-Path $script:RepositoryRoot "scripts\upgrades\Upgrade-pgAdmin.ps1"
                             if (Test-Path $scriptPath) {
                                 $params = @{}
                                 if ($autoBackup) { $params['SkipBackup'] = $true }
@@ -533,7 +554,7 @@ function Register-EventHandlers {
                             }
                         }
                         "QGIS" {
-                            $scriptPath = ".\scripts\upgrades\Upgrade-QGIS.ps1"
+                            $scriptPath = Join-Path $script:RepositoryRoot "scripts\upgrades\Upgrade-QGIS.ps1"
                             if (Test-Path $scriptPath) {
                                 $params = @{}
                                 if ($autoBackup) { $params['SkipBackup'] = $true }
@@ -568,7 +589,7 @@ function Register-EventHandlers {
     $Window.FindName('btnBrowseConfig').Add_Click({
         $dialog = New-Object System.Windows.Forms.OpenFileDialog
         $dialog.Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*"
-        $dialog.InitialDirectory = ".\config"
+        $dialog.InitialDirectory = Join-Path $script:RepositoryRoot "config"
 
         if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
             $Window.FindName('txtConfigPath').Text = $dialog.FileName
@@ -588,7 +609,7 @@ try {
     # Initialize controls with default values
     $window.FindName('txtConfigPath').Text = $script:ConfigPath
     $window.FindName('txtBackupName').Text = "manual-$(Get-Date -Format 'yyyy-MM-dd_HHmmss')"
-    $window.FindName('txtCacheLocation').Text = ".\downloads"
+    $window.FindName('txtCacheLocation').Text = Join-Path $script:RepositoryRoot "downloads"
 
     # Load configuration
     Load-Configuration

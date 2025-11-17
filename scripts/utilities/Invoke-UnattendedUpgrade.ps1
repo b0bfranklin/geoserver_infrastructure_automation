@@ -57,8 +57,43 @@ param(
 #Requires -Version 7.0
 #Requires -RunAsAdministrator
 
+# ============================================================================
+# REPOSITORY ROOT DETECTION
+# ============================================================================
+
+# Determine repository root (works regardless of execution directory)
+$script:RepositoryRoot = if ($PSScriptRoot) {
+    # Scripts are in scripts/utilities/, so go up 2 levels
+    Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+} else {
+    # Fallback for interactive sessions
+    Get-Location | Select-Object -ExpandProperty Path
+}
+
+# Validate repository root
+if (-not (Test-Path (Join-Path $script:RepositoryRoot "config"))) {
+    throw "Repository root detection failed. Expected config directory at: $script:RepositoryRoot"
+}
+
+# Determine log directory (platform-aware)
+$script:LogDirectory = if ($env:GEOSERVER_LOG_DIR) {
+    # Use environment variable if set
+    $env:GEOSERVER_LOG_DIR
+} elseif ($IsWindows) {
+    # Windows default
+    "C:\GeoServerLogs"
+} else {
+    # Linux/macOS default
+    Join-Path $script:RepositoryRoot "logs"
+}
+
+# Ensure log directory exists
+if (-not (Test-Path $script:LogDirectory)) {
+    New-Item -Path $script:LogDirectory -ItemType Directory -Force | Out-Null
+}
+
 # Script variables
-$script:LogPath = "C:\GeoServerLogs\unattended-upgrade-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+$script:LogPath = Join-Path $script:LogDirectory "unattended-upgrade-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
 $script:UpgradeResults = @()
 
 #region Logging Functions
@@ -150,7 +185,7 @@ function Invoke-ComponentUpgrade {
         # Run integration tests if upgrade succeeded and not skipped
         if ($result.Status -eq "UpgradeSuccess" -and -not $SkipTests) {
             Write-LogEntry "Running integration tests for $ComponentName..." -Level INFO
-            $testScript = ".\tests\integration\Invoke-IntegrationTests.ps1"
+            $testScript = Join-Path $script:RepositoryRoot "tests\integration\Invoke-IntegrationTests.ps1"
 
             if (Test-Path $testScript) {
                 & $testScript -StopOnFailure
@@ -164,7 +199,7 @@ function Invoke-ComponentUpgrade {
 
                     # Rollback
                     Write-LogEntry "Rolling back $ComponentName..." -Level WARNING
-                    $rollbackScript = ".\scripts\core\Restore-GeoServerEnvironment.ps1"
+                    $rollbackScript = Join-Path $script:RepositoryRoot "scripts\core\Restore-GeoServerEnvironment.ps1"
 
                     if (Test-Path $rollbackScript) {
                         & $rollbackScript -RestoreComponents $ComponentName
@@ -208,13 +243,14 @@ try {
 
     # Step 1: Check for updates
     Write-SectionHeader "Checking for Available Updates"
-    $versionCheckScript = ".\scripts\utilities\Test-VersionUpdates.ps1"
-    & $versionCheckScript -OutputFormat JSON -OutputPath ".\temp\version-check.json"
+    $versionCheckScript = Join-Path $script:RepositoryRoot "scripts\utilities\Test-VersionUpdates.ps1"
+    $tempPath = Join-Path $script:RepositoryRoot "temp\version-check.json"
+    & $versionCheckScript -OutputFormat JSON -OutputPath $tempPath
 
     # Load version check results
     $availableUpdates = @()
-    if (Test-Path ".\temp\version-check.json") {
-        $versionResults = Get-Content ".\temp\version-check.json" -Raw | ConvertFrom-Json
+    if (Test-Path $tempPath) {
+        $versionResults = Get-Content $tempPath -Raw | ConvertFrom-Json
         $availableUpdates = $versionResults | Where-Object { $_.UpdateAvailable -or $_.SecurityIssues.Count -gt 0 }
     }
 
@@ -234,18 +270,18 @@ try {
     # Step 2: Create backup
     if (-not $DryRun) {
         Write-SectionHeader "Creating Pre-Upgrade Backup"
-        $backupScript = ".\scripts\core\Backup-GeoServerEnvironment.ps1"
+        $backupScript = Join-Path $script:RepositoryRoot "scripts\core\Backup-GeoServerEnvironment.ps1"
         & $backupScript -BackupName "pre-unattended-upgrade-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
     }
 
     # Step 3: Upgrade components in dependency order
     $upgradeOrder = @(
-        @{ Name = "Java"; Script = ".\scripts\upgrades\Upgrade-AzulJRE.ps1" },
-        @{ Name = "Tomcat"; Script = ".\scripts\upgrades\Upgrade-Tomcat.ps1" },
-        @{ Name = "PostgreSQL"; Script = ".\scripts\upgrades\Upgrade-PostgreSQL.ps1" },
-        @{ Name = "GeoServer"; Script = ".\scripts\upgrades\Upgrade-GeoServer.ps1" },
-        @{ Name = "pgAdmin"; Script = ".\scripts\upgrades\Upgrade-pgAdmin.ps1" },
-        @{ Name = "QGIS"; Script = ".\scripts\upgrades\Upgrade-QGIS.ps1" }
+        @{ Name = "Java"; Script = Join-Path $script:RepositoryRoot "scripts\upgrades\Upgrade-AzulJRE.ps1" },
+        @{ Name = "Tomcat"; Script = Join-Path $script:RepositoryRoot "scripts\upgrades\Upgrade-Tomcat.ps1" },
+        @{ Name = "PostgreSQL"; Script = Join-Path $script:RepositoryRoot "scripts\upgrades\Upgrade-PostgreSQL.ps1" },
+        @{ Name = "GeoServer"; Script = Join-Path $script:RepositoryRoot "scripts\upgrades\Upgrade-GeoServer.ps1" },
+        @{ Name = "pgAdmin"; Script = Join-Path $script:RepositoryRoot "scripts\upgrades\Upgrade-pgAdmin.ps1" },
+        @{ Name = "QGIS"; Script = Join-Path $script:RepositoryRoot "scripts\upgrades\Upgrade-QGIS.ps1" }
     )
 
     foreach ($component in $upgradeOrder) {
@@ -283,7 +319,7 @@ try {
 
     # Step 5: Send email report if requested
     if ($EmailReport) {
-        $emailScript = ".\scripts\utilities\Send-EmailNotification.ps1"
+        $emailScript = Join-Path $script:RepositoryRoot "scripts\utilities\Send-EmailNotification.ps1"
         if (Test-Path $emailScript) {
             $templateData = @{
                 Component = "Multiple Components"

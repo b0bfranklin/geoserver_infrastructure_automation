@@ -87,10 +87,45 @@ param(
 #Requires -Version 7.0
 #Requires -RunAsAdministrator
 
+# ============================================================================
+# REPOSITORY ROOT DETECTION
+# ============================================================================
+
+# Determine repository root (works regardless of execution directory)
+$script:RepositoryRoot = if ($PSScriptRoot) {
+    # Scripts are in scripts/utilities/, so go up 2 levels
+    Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+} else {
+    # Fallback for interactive sessions
+    Get-Location | Select-Object -ExpandProperty Path
+}
+
+# Validate repository root
+if (-not (Test-Path (Join-Path $script:RepositoryRoot "config"))) {
+    throw "Repository root detection failed. Expected config directory at: $script:RepositoryRoot"
+}
+
+# Determine log directory (platform-aware)
+$script:LogDirectory = if ($env:GEOSERVER_LOG_DIR) {
+    # Use environment variable if set
+    $env:GEOSERVER_LOG_DIR
+} elseif ($IsWindows) {
+    # Windows default
+    "C:\GeoServerLogs"
+} else {
+    # Linux/macOS default
+    Join-Path $script:RepositoryRoot "logs"
+}
+
+# Ensure log directory exists
+if (-not (Test-Path $script:LogDirectory)) {
+    New-Item -Path $script:LogDirectory -ItemType Directory -Force | Out-Null
+}
+
 # Script variables
-$script:LogPath = "C:\GeoServerLogs\scheduled-tasks-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+$script:LogPath = Join-Path $script:LogDirectory "scheduled-tasks-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
 $script:TaskPrefix = "GeoServer-"
-$script:WorkingDirectory = $PSScriptRoot | Split-Path | Split-Path
+$script:WorkingDirectory = $script:RepositoryRoot
 
 #region Logging Functions
 
@@ -151,7 +186,7 @@ function Get-TaskConfiguration {
             Name = "$($script:TaskPrefix)UnattendedUpgrade"
             Description = "Monthly unattended component upgrades with automated testing"
             ScriptPath = Join-Path $script:WorkingDirectory "scripts\utilities\Invoke-UnattendedUpgrade.ps1"
-            Arguments = "-RunTests -EmailReport"
+            Arguments = "-EmailReport"
         }
 
         Backup = @{
@@ -165,7 +200,7 @@ function Get-TaskConfiguration {
             Name = "$($script:TaskPrefix)HealthCheck"
             Description = "Periodic health monitoring with alerting"
             ScriptPath = Join-Path $script:WorkingDirectory "scripts\core\Get-GeoServerHealth.ps1"
-            Arguments = "-OutputFormat HTML -EmailOnError"
+            Arguments = "-OutputFormat HTML -SendEmail"
         }
     }
 

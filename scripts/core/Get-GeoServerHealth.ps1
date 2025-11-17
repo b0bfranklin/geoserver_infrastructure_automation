@@ -70,15 +70,14 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory=$false, HelpMessage="Path to configuration file")]
-    [ValidateScript({Test-Path $_ -PathType Leaf})]
-    [string]$ConfigPath = ".\config\upgrade-config.json",
+    [string]$ConfigPath,
 
     [Parameter(Mandatory=$false, HelpMessage="Output format for health report")]
     [ValidateSet('Console', 'HTML', 'JSON', 'All')]
     [string]$OutputFormat = 'Console',
 
     [Parameter(Mandatory=$false, HelpMessage="Path for saving reports")]
-    [string]$OutputPath = ".\reports",
+    [string]$OutputPath,
 
     [Parameter(Mandatory=$false, HelpMessage="Send email notification")]
     [switch]$SendEmail,
@@ -92,6 +91,39 @@ param(
 )
 
 #Requires -Version 7.0
+
+# ============================================================================
+# REPOSITORY ROOT DETECTION
+# ============================================================================
+
+# Determine repository root (works regardless of execution directory)
+$script:RepositoryRoot = if ($PSScriptRoot) {
+    # Scripts are in scripts/core/, so go up 2 levels
+    Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+} else {
+    # Fallback for interactive sessions
+    Get-Location | Select-Object -ExpandProperty Path
+}
+
+# Validate repository root
+if (-not (Test-Path (Join-Path $script:RepositoryRoot "config"))) {
+    throw "Repository root detection failed. Expected config directory at: $script:RepositoryRoot"
+}
+
+# Set default ConfigPath if not provided
+if (-not $ConfigPath) {
+    $ConfigPath = Join-Path $script:RepositoryRoot "config\upgrade-config.json"
+}
+
+# Validate ConfigPath exists
+if (-not (Test-Path $ConfigPath -PathType Leaf)) {
+    throw "Configuration file not found: $ConfigPath"
+}
+
+# Set default OutputPath if not provided
+if (-not $OutputPath) {
+    $OutputPath = Join-Path $script:RepositoryRoot "reports"
+}
 
 # ============================================================================
 # SCRIPT INITIALIZATION

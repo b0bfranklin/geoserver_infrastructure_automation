@@ -107,9 +107,44 @@ param(
 
 #Requires -Version 7.0
 
+# ============================================================================
+# REPOSITORY ROOT DETECTION
+# ============================================================================
+
+# Determine repository root (works regardless of execution directory)
+$script:RepositoryRoot = if ($PSScriptRoot) {
+    # Scripts are in scripts/utilities/, so go up 2 levels
+    Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+} else {
+    # Fallback for interactive sessions
+    Get-Location | Select-Object -ExpandProperty Path
+}
+
+# Validate repository root
+if (-not (Test-Path (Join-Path $script:RepositoryRoot "config"))) {
+    throw "Repository root detection failed. Expected config directory at: $script:RepositoryRoot"
+}
+
+# Determine log directory (platform-aware)
+$script:LogDirectory = if ($env:GEOSERVER_LOG_DIR) {
+    # Use environment variable if set
+    $env:GEOSERVER_LOG_DIR
+} elseif ($IsWindows) {
+    # Windows default
+    "C:\GeoServerLogs"
+} else {
+    # Linux/macOS default
+    Join-Path $script:RepositoryRoot "logs"
+}
+
+# Ensure log directory exists
+if (-not (Test-Path $script:LogDirectory)) {
+    New-Item -Path $script:LogDirectory -ItemType Directory -Force | Out-Null
+}
+
 # Script variables
-$script:LogPath = "C:\GeoServerLogs\email-notifications-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
-$script:ConfigPath = ".\config\upgrade-config.json"
+$script:LogPath = Join-Path $script:LogDirectory "email-notifications-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+$script:ConfigPath = Join-Path $script:RepositoryRoot "config\upgrade-config.json"
 $script:Config = $null
 
 #region Logging Functions
@@ -301,7 +336,7 @@ function Get-EmailTemplate {
             </ul>
             <p><strong>Next steps:</strong></p>
             <ul>
-                <li>Review error logs in C:\GeoServerLogs</li>
+                <li>Review error logs in the configured log directory</li>
                 <li>Verify system health</li>
                 <li>Contact support if issue persists</li>
             </ul>
@@ -559,8 +594,16 @@ function Send-Email {
         }
 
         # Add sender (from configuration or default)
-        if ($script:Config -and $script:Config.notifications.email.from) {
-            $mailParams['From'] = $script:Config.notifications.email.from
+        $fromAddress = $null
+        if ($script:Config -and
+            $script:Config.PSObject.Properties['notifications'] -and
+            $script:Config.notifications.PSObject.Properties['email'] -and
+            $script:Config.notifications.email.PSObject.Properties['from']) {
+            $fromAddress = $script:Config.notifications.email.from
+        }
+
+        if ($fromAddress) {
+            $mailParams['From'] = $fromAddress
         } else {
             $mailParams['From'] = "geoserver-automation@$env:COMPUTERNAME"
         }
@@ -607,22 +650,34 @@ try {
 
     # Determine recipients
     $recipients = $To
-    if (-not $recipients -and $script:Config -and $script:Config.notifications.email.recipients) {
-        $recipients = $script:Config.notifications.email.recipients
+    if (-not $recipients) {
+        if ($script:Config -and
+            $script:Config.PSObject.Properties['notifications'] -and
+            $script:Config.notifications.PSObject.Properties['email'] -and
+            $script:Config.notifications.email.PSObject.Properties['recipients']) {
+            $recipients = $script:Config.notifications.email.recipients
+        }
     }
 
     if (-not $recipients) {
-        Write-LogEntry "No recipients specified and none configured" -Level ERROR
+        Write-LogEntry "No recipients specified and none configured in config file" -Level ERROR
+        Write-LogEntry "Specify recipients via -To parameter or configure in notifications.email.recipients" -Level ERROR
         exit 1
     }
 
     # Determine SMTP settings
     $smtpServer = $SMTPServer
-    if (-not $smtpServer -and $script:Config -and $script:Config.notifications.email.smtpServer) {
-        $smtpServer = $script:Config.notifications.email.smtpServer
+    if (-not $smtpServer) {
+        if ($script:Config -and
+            $script:Config.PSObject.Properties['notifications'] -and
+            $script:Config.notifications.PSObject.Properties['email'] -and
+            $script:Config.notifications.email.PSObject.Properties['smtpServer']) {
+            $smtpServer = $script:Config.notifications.email.smtpServer
+        }
     }
     if (-not $smtpServer) {
         $smtpServer = "localhost"
+        Write-LogEntry "No SMTP server specified, using default: localhost" -Level WARNING
     }
 
     # Determine body content

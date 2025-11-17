@@ -55,7 +55,7 @@ param(
     [string]$InstallPath,
 
     [Parameter(Mandatory=$false)]
-    [string]$ConfigPath = ".\config\upgrade-config.json",
+    [string]$ConfigPath,
 
     [Parameter(Mandatory=$false)]
     [switch]$UpdateEnvironment = $true,
@@ -73,11 +73,39 @@ param(
 #Requires -Version 7.0
 #Requires -RunAsAdministrator
 
+# ============================================================================
+# REPOSITORY ROOT DETECTION
+# ============================================================================
+
+# Determine repository root (works regardless of execution directory)
+$script:RepositoryRoot = if ($PSScriptRoot) {
+    # Scripts are in scripts/upgrades/, so go up 2 levels
+    Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+} else {
+    # Fallback for interactive sessions
+    Get-Location | Select-Object -ExpandProperty Path
+}
+
+# Validate repository root
+if (-not (Test-Path (Join-Path $script:RepositoryRoot "config"))) {
+    throw "Repository root detection failed. Expected config directory at: $script:RepositoryRoot"
+}
+
+# Set default ConfigPath if not provided
+if (-not $ConfigPath) {
+    $ConfigPath = Join-Path $script:RepositoryRoot "config\upgrade-config.json"
+}
+
+# Validate ConfigPath exists
+if (-not (Test-Path $ConfigPath -PathType Leaf)) {
+    throw "Configuration file not found: $ConfigPath"
+}
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 # Import modules
-Import-Module "$PSScriptRoot\..\modules\TomcatManager.psm1" -Force
+Import-Module (Join-Path $script:RepositoryRoot "scripts\modules\TomcatManager.psm1") -Force
 
 $script:CurrentJavaPath = $null
 $script:BackupPath = $null
@@ -192,7 +220,7 @@ function Install-AzulZulu {
 
     try {
         # Download package using package manager
-        $packageScript = Join-Path $PSScriptRoot "..\utilities\Get-ComponentPackage.ps1"
+        $packageScript = Join-Path $script:RepositoryRoot "scripts\utilities\Get-ComponentPackage.ps1"
         Write-LogEntry "Downloading Azul Zulu JRE $Version..." "INFO"
 
         $downloadResult = & $packageScript -Component "AzulJRE" -Version "$Version.0.9" 2>&1

@@ -73,7 +73,7 @@ param(
     [string]$RestoreComponents = 'All',
 
     [Parameter(Mandatory=$false)]
-    [string]$ConfigPath = ".\config\upgrade-config.json",
+    [string]$ConfigPath,
 
     [Parameter(Mandatory=$false)]
     [switch]$SkipHealthCheck,
@@ -87,6 +87,34 @@ param(
 
 #Requires -Version 7.0
 #Requires -RunAsAdministrator
+
+# ============================================================================
+# REPOSITORY ROOT DETECTION
+# ============================================================================
+
+# Determine repository root (works regardless of execution directory)
+$script:RepositoryRoot = if ($PSScriptRoot) {
+    # Scripts are in scripts/core/, so go up 2 levels
+    Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+} else {
+    # Fallback for interactive sessions
+    Get-Location | Select-Object -ExpandProperty Path
+}
+
+# Validate repository root
+if (-not (Test-Path (Join-Path $script:RepositoryRoot "config"))) {
+    throw "Repository root detection failed. Expected config directory at: $script:RepositoryRoot"
+}
+
+# Set default ConfigPath if not provided
+if (-not $ConfigPath) {
+    $ConfigPath = Join-Path $script:RepositoryRoot "config\upgrade-config.json"
+}
+
+# Validate ConfigPath exists
+if (-not (Test-Path $ConfigPath -PathType Leaf)) {
+    throw "Configuration file not found: $ConfigPath"
+}
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -480,15 +508,16 @@ function Test-PostRestoreHealth {
     Write-LogEntry "=== Verifying Post-Restore Health ===" "STEP"
 
     try {
-        # Use the health check script
-        $healthScript = Join-Path $PSScriptRoot "Get-GeoServerHealth.ps1"
+        # Use the health check script (repository-relative path)
+        $healthScript = Join-Path $script:RepositoryRoot "scripts\core\Get-GeoServerHealth.ps1"
 
         if (Test-Path $healthScript) {
             & $healthScript -ConfigPath $ConfigPath
             return $LASTEXITCODE -eq 0
         }
         else {
-            Write-LogEntry "Health check script not found - skipping verification" "WARNING"
+            Write-LogEntry "Health check script not found: $healthScript" "WARNING"
+            Write-LogEntry "Skipping post-restore health verification" "WARNING"
             return $true
         }
     }

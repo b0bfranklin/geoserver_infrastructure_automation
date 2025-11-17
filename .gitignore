@@ -148,3 +148,4 @@ docs/.doctrees/
 !config/templates/
 !docs/
 !examples/
+temp/

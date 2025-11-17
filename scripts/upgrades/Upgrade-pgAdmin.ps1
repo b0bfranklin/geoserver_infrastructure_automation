@@ -90,12 +90,48 @@ param(
 #Requires -RunAsAdministrator
 
 # Script-level variables
-$script:LogPath = "C:\GeoServerLogs\pgadmin-upgrade-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
 $script:ErrorOccurred = $false
 $script:BackupManifest = @{}
 
+# ============================================================================
+# REPOSITORY ROOT DETECTION
+# ============================================================================
+
+# Determine repository root (works regardless of execution directory)
+$script:RepositoryRoot = if ($PSScriptRoot) {
+    # Scripts are in scripts/upgrades/, so go up 2 levels
+    Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+} else {
+    # Fallback for interactive sessions
+    Get-Location | Select-Object -ExpandProperty Path
+}
+
+# Validate repository root
+if (-not (Test-Path (Join-Path $script:RepositoryRoot "config"))) {
+    throw "Repository root detection failed. Expected config directory at: $script:RepositoryRoot"
+}
+
+# Determine log directory (platform-aware)
+$script:LogDirectory = if ($env:GEOSERVER_LOG_DIR) {
+    # Use environment variable if set
+    $env:GEOSERVER_LOG_DIR
+} elseif ($IsWindows) {
+    # Windows default
+    "C:\GeoServerLogs"
+} else {
+    # Linux/macOS default
+    Join-Path $script:RepositoryRoot "logs"
+}
+
+# Ensure log directory exists
+if (-not (Test-Path $script:LogDirectory)) {
+    New-Item -Path $script:LogDirectory -ItemType Directory -Force | Out-Null
+}
+
+$script:LogPath = Join-Path $script:LogDirectory "pgadmin-upgrade-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+
 # Import shared modules if available
-$modulePath = Join-Path $PSScriptRoot "..\modules"
+$modulePath = Join-Path $script:RepositoryRoot "scripts\modules"
 if (Test-Path $modulePath) {
     Get-ChildItem -Path $modulePath -Filter "*.psm1" | ForEach-Object {
         Import-Module $_.FullName -Force -ErrorAction SilentlyContinue
@@ -468,7 +504,7 @@ function Install-PgAdmin {
     Write-SectionHeader "Installing pgAdmin $($VersionInfo.Version)"
 
     # Use package manager if available
-    $packageManager = Join-Path $PSScriptRoot "..\utilities\Get-ComponentPackage.ps1"
+    $packageManager = Join-Path $script:RepositoryRoot "scripts\utilities\Get-ComponentPackage.ps1"
 
     if (Test-Path $packageManager) {
         Write-LogEntry "Using package manager to download pgAdmin..." -Level INFO
@@ -866,7 +902,7 @@ function Invoke-PgAdminUpgrade {
     }
 
     # Step 8: Generate change management report
-    if (Test-Path (Join-Path $PSScriptRoot "..\utilities\New-ChangeManagementReport.ps1")) {
+    if (Test-Path (Join-Path $script:RepositoryRoot "scripts\utilities\New-ChangeManagementReport.ps1")) {
         Write-LogEntry "Generating change management report..." -Level INFO
 
         try {
@@ -880,10 +916,10 @@ function Invoke-PgAdminUpgrade {
                     "Verified installation and server connectivity"
                 )
                 OutputFormat = "HTML"
-                OutputPath = "C:\GeoServerLogs\pgadmin-upgrade-report-$(Get-Date -Format 'yyyyMMdd-HHmmss').html"
+                OutputPath = Join-Path $script:LogDirectory "pgadmin-upgrade-report-$(Get-Date -Format 'yyyyMMdd-HHmmss').html"
             }
 
-            & (Join-Path $PSScriptRoot "..\utilities\New-ChangeManagementReport.ps1") @reportParams
+            & (Join-Path $script:RepositoryRoot "scripts\utilities\New-ChangeManagementReport.ps1") @reportParams
             Write-LogEntry "Change management report generated" -Level SUCCESS
         } catch {
             Write-LogEntry "Could not generate change management report: $_" -Level WARNING

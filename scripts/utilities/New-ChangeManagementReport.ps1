@@ -77,10 +77,36 @@ param(
     [string]$EmailRecipients,
 
     [Parameter(Mandatory=$false)]
-    [string]$ConfigPath = ".\config\upgrade-config.json"
+    [string]$ConfigPath
 )
 
 #Requires -Version 7.0
+
+# ============================================================================
+# REPOSITORY ROOT DETECTION
+# ============================================================================
+
+# Determine repository root (works regardless of execution directory)
+$script:RepositoryRoot = if ($PSScriptRoot) {
+    # Scripts are in scripts/utilities/, so go up 2 levels
+    Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+} else {
+    # Fallback for interactive sessions
+    Get-Location | Select-Object -ExpandProperty Path
+}
+
+# Validate repository root
+if (-not (Test-Path (Join-Path $script:RepositoryRoot "config"))) {
+    throw "Repository root detection failed. Expected config directory at: $script:RepositoryRoot"
+}
+
+# Set default ConfigPath if not provided
+if (-not $ConfigPath) {
+    $ConfigPath = Join-Path $script:RepositoryRoot "config\upgrade-config.json"
+}
+
+# Validate ConfigPath exists (optional for this script)
+# Configuration is optional for change management reports
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Continue"
