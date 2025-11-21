@@ -1,0 +1,479 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "lastUpdated": "2024-01-15",
+    "description": "Database of known breaking changes and compatibility issues for GeoServer infrastructure components"
+  },
+  "geoserver": {
+    "2.24.0": {
+      "releaseDate": "2023-09-18",
+      "breakingChanges": [
+        {
+          "severity": "HIGH",
+          "category": "API Change",
+          "title": "REST API Layer Groups Schema Change",
+          "description": "REST API endpoints for layer groups changed structure and response format",
+          "impact": "Custom scripts using layer group REST API will break. GET /rest/layergroups returns different JSON structure.",
+          "affectedFeatures": [
+            "REST API - Layer Groups",
+            "Programmatic layer group management"
+          ],
+          "remediation": "Update REST API calls to use new layerGroup schema format. See: https://docs.geoserver.org/stable/en/user/rest/api/layergroups.html",
+          "migrationEffort": "Medium",
+          "automatable": false
+        },
+        {
+          "severity": "MEDIUM",
+          "category": "Configuration",
+          "title": "Default Workspace Handling Changed",
+          "description": "Default workspace behavior for services without explicit workspace prefix has changed",
+          "impact": "Services without workspace prefix may resolve to different workspaces than before. WMS/WFS requests without workspace may behave differently.",
+          "affectedFeatures": [
+            "WMS GetMap/GetFeatureInfo",
+            "WFS GetFeature",
+            "Default workspace resolution"
+          ],
+          "remediation": "Review and explicitly set default workspace in global.xml. Update client applications to always specify workspace in requests.",
+          "migrationEffort": "Low",
+          "automatable": true
+        },
+        {
+          "severity": "LOW",
+          "category": "Deprecated",
+          "title": "Legacy GeoJSON Output Format Deprecated",
+          "description": "Old GeoJSON output format (application/json) deprecated in favor of standard application/geo+json",
+          "impact": "Clients using application/json MIME type will receive deprecation warnings",
+          "affectedFeatures": [
+            "WFS GetFeature with JSON output"
+          ],
+          "remediation": "Update client applications to request application/geo+json instead of application/json",
+          "migrationEffort": "Low",
+          "automatable": true
+        }
+      ],
+      "deprecations": [
+        {
+          "feature": "VERBOSE_LOGGING profile",
+          "replacement": "Custom logging configuration",
+          "removalVersion": "2.26.0"
+        }
+      ],
+      "newRequirements": {
+        "javaVersion": "8",
+        "minimumTomcatVersion": "8.5",
+        "recommendedTomcatVersion": "9.0"
+      }
+    },
+    "2.25.0": {
+      "releaseDate": "2024-03-15",
+      "breakingChanges": [
+        {
+          "severity": "CRITICAL",
+          "category": "Security",
+          "title": "Security Subsystem Refactored",
+          "description": "Complete refactoring of security subsystem with new authentication/authorization API",
+          "impact": "Custom authentication providers and security filters will not load. Extensions using old security API will fail.",
+          "affectedFeatures": [
+            "Custom authentication providers",
+            "Custom security filters",
+            "Authorization extensions"
+          ],
+          "remediation": "Migrate custom auth filters to new security API. Consult migration guide: https://docs.geoserver.org/latest/en/developer/programming-guide/security/index.html",
+          "migrationEffort": "High",
+          "automatable": false,
+          "detectionMethod": "Check for custom .jar files in WEB-INF/lib matching pattern: *auth*.jar, *security*.jar"
+        },
+        {
+          "severity": "CRITICAL",
+          "category": "Java Version",
+          "title": "Minimum Java Version Raised to 11",
+          "description": "Java 8 no longer supported. GeoServer requires Java 11 or later.",
+          "impact": "Java 8 installations will fail to start with ClassNotFoundException or UnsupportedClassVersionError",
+          "affectedFeatures": [
+            "All GeoServer functionality"
+          ],
+          "remediation": "Upgrade Java to version 11, 17, or 21 before upgrading GeoServer. Recommended: Use Java 17 LTS.",
+          "migrationEffort": "Medium",
+          "automatable": true,
+          "detectionMethod": "Check java -version output"
+        },
+        {
+          "severity": "HIGH",
+          "category": "Data Directory",
+          "title": "Style Configuration Format Updated",
+          "description": "Style configuration XML schema updated to support CSS 3 features and new rendering hints",
+          "impact": "Some legacy SLD styles may not validate. Complex SLD with vendor options may need review.",
+          "affectedFeatures": [
+            "SLD styles",
+            "CSS styles",
+            "Style configuration"
+          ],
+          "remediation": "Run style validation tool on all SLD files. Update styles using deprecated vendor options. Test rendering output.",
+          "migrationEffort": "Medium",
+          "automatable": true,
+          "detectionMethod": "Scan data_directory/styles for .sld files, check for deprecated vendor options"
+        },
+        {
+          "severity": "HIGH",
+          "category": "WPS",
+          "title": "WPS Process API Changes",
+          "description": "WPS process execution API updated with new asynchronous execution model",
+          "impact": "Custom WPS processes need migration. Synchronous-only processes may behave differently.",
+          "affectedFeatures": [
+            "Custom WPS processes",
+            "WPS process chaining",
+            "Process execution clients"
+          ],
+          "remediation": "Update custom WPS processes to support async execution. Review WPS client timeout settings.",
+          "migrationEffort": "High",
+          "automatable": false,
+          "detectionMethod": "Check for WPS extension installation and custom process JARs"
+        },
+        {
+          "severity": "MEDIUM",
+          "category": "Configuration",
+          "title": "GeoWebCache Default Settings Changed",
+          "description": "Default tile cache expiration and disk quota settings changed",
+          "impact": "Existing tile caches may need reconfiguration. Disk usage patterns may change.",
+          "affectedFeatures": [
+            "GeoWebCache",
+            "Tile caching",
+            "Disk quotas"
+          ],
+          "remediation": "Review GeoWebCache configuration. Adjust disk quotas and expiration policies as needed.",
+          "migrationEffort": "Low",
+          "automatable": true,
+          "detectionMethod": "Check geowebcache.xml configuration"
+        }
+      ],
+      "deprecations": [
+        {
+          "feature": "Shapefile charset auto-detection",
+          "replacement": "Explicit charset configuration in datastore",
+          "removalVersion": "2.27.0"
+        },
+        {
+          "feature": "Legacy JDBC connection pool",
+          "replacement": "HikariCP connection pool",
+          "removalVersion": "2.26.0"
+        }
+      ],
+      "newRequirements": {
+        "javaVersion": "11",
+        "minimumTomcatVersion": "9.0.50",
+        "recommendedTomcatVersion": "9.0.80"
+      },
+      "newFeatures": [
+        "CSS3 styling support",
+        "Enhanced vector tiles",
+        "Improved WMTS performance",
+        "New REST API endpoints"
+      ]
+    },
+    "2.26.0": {
+      "releaseDate": "2024-09-15",
+      "breakingChanges": [
+        {
+          "severity": "HIGH",
+          "category": "Database",
+          "title": "PostgreSQL Minimum Version Raised",
+          "description": "Minimum PostgreSQL version raised to 12.0 for PostGIS stores",
+          "impact": "PostgreSQL 11 and earlier versions no longer supported",
+          "affectedFeatures": [
+            "PostGIS datastores",
+            "PostgreSQL connections"
+          ],
+          "remediation": "Upgrade PostgreSQL to version 12 or later before upgrading GeoServer",
+          "migrationEffort": "High",
+          "automatable": false
+        }
+      ],
+      "newRequirements": {
+        "javaVersion": "11",
+        "minimumPostgreSQLVersion": "12.0",
+        "minimumPostGISVersion": "3.0"
+      }
+    }
+  },
+  "tomcat": {
+    "9.0.0": {
+      "releaseDate": "2018-01-18",
+      "breakingChanges": [
+        {
+          "severity": "HIGH",
+          "category": "Servlet API",
+          "title": "Servlet 4.0 API Changes",
+          "description": "Upgraded to Servlet 4.0 specification with HTTP/2 support",
+          "impact": "Applications using Servlet 3.1 deprecated features may fail. HTTP/2 push APIs different.",
+          "affectedFeatures": [
+            "Servlet API",
+            "HTTP/2 support",
+            "WebSocket implementation"
+          ],
+          "remediation": "Update web applications to Servlet 4.0 specification. Remove deprecated API usage.",
+          "migrationEffort": "Medium",
+          "automatable": false
+        },
+        {
+          "severity": "MEDIUM",
+          "category": "Configuration",
+          "title": "Default TLS Protocol Changes",
+          "description": "TLS 1.0 and 1.1 disabled by default. TLS 1.2+ required.",
+          "impact": "Clients using TLS 1.0/1.1 will fail to connect to HTTPS connectors",
+          "affectedFeatures": [
+            "HTTPS connectors",
+            "SSL/TLS configuration"
+          ],
+          "remediation": "Update SSL/TLS configuration to require TLS 1.2 minimum. Update client applications.",
+          "migrationEffort": "Low",
+          "automatable": true
+        }
+      ],
+      "newRequirements": {
+        "javaVersion": "8"
+      }
+    },
+    "10.0.0": {
+      "releaseDate": "2021-01-14",
+      "breakingChanges": [
+        {
+          "severity": "CRITICAL",
+          "category": "Java Version",
+          "title": "Java 11 Minimum Requirement",
+          "description": "Tomcat 10 requires Java 11 or later. Java 8 no longer supported.",
+          "impact": "Java 8 installations will fail to start",
+          "affectedFeatures": [
+            "All Tomcat functionality"
+          ],
+          "remediation": "Upgrade to Java 11 or later before upgrading Tomcat",
+          "migrationEffort": "Medium",
+          "automatable": true
+        },
+        {
+          "severity": "CRITICAL",
+          "category": "Package Names",
+          "title": "Jakarta EE Namespace Migration",
+          "description": "Complete migration from javax.* to jakarta.* package namespace",
+          "impact": "ALL applications using javax.servlet.*, javax.websocket.*, javax.el.* will NOT work. Requires application recompilation.",
+          "affectedFeatures": [
+            "All Servlet-based applications",
+            "JSP pages",
+            "WebSocket applications",
+            "EL expressions"
+          ],
+          "remediation": "Option 1: Stay on Tomcat 9.x (recommended for GeoServer). Option 2: Migrate applications to Jakarta EE 9+ (requires source code changes and recompilation).",
+          "migrationEffort": "Critical",
+          "automatable": false,
+          "notes": "GeoServer does NOT support Tomcat 10+ as of GeoServer 2.25. Use Tomcat 9.0.x branch."
+        }
+      ],
+      "newRequirements": {
+        "javaVersion": "11"
+      },
+      "compatibility": {
+        "geoserver": "NOT COMPATIBLE - GeoServer requires Tomcat 9.x or earlier"
+      }
+    },
+    "10.1.0": {
+      "releaseDate": "2022-09-28",
+      "breakingChanges": [
+        {
+          "severity": "MEDIUM",
+          "category": "Configuration",
+          "title": "Default Connector Settings Changed",
+          "description": "Default maxThreads, maxConnections, and other connector parameters adjusted",
+          "impact": "Performance characteristics may differ from Tomcat 10.0.x",
+          "affectedFeatures": [
+            "HTTP connectors",
+            "Thread pool sizing"
+          ],
+          "remediation": "Review and explicitly configure connector settings in server.xml",
+          "migrationEffort": "Low",
+          "automatable": true
+        }
+      ],
+      "newRequirements": {
+        "javaVersion": "11"
+      }
+    },
+    "11.0.0": {
+      "releaseDate": "2024-04-04",
+      "breakingChanges": [
+        {
+          "severity": "CRITICAL",
+          "category": "Java Version",
+          "title": "Java 17 Minimum Requirement",
+          "description": "Tomcat 11 requires Java 17 or later",
+          "impact": "Java 11 installations will fail to start",
+          "affectedFeatures": [
+            "All Tomcat functionality"
+          ],
+          "remediation": "Upgrade to Java 17 or 21 before upgrading Tomcat",
+          "migrationEffort": "High",
+          "automatable": true
+        }
+      ],
+      "newRequirements": {
+        "javaVersion": "17"
+      },
+      "compatibility": {
+        "geoserver": "NOT COMPATIBLE - GeoServer requires Tomcat 9.x"
+      }
+    }
+  },
+  "java": {
+    "11": {
+      "releaseDate": "2018-09-25",
+      "breakingChanges": [
+        {
+          "severity": "HIGH",
+          "category": "Removed APIs",
+          "title": "Java EE Modules Removed",
+          "description": "Java EE and CORBA modules removed from JDK (JAXB, JAX-WS, etc.)",
+          "impact": "Applications using JAXB, JAX-WS, or other Java EE APIs will fail with ClassNotFoundException",
+          "affectedFeatures": [
+            "JAXB XML binding",
+            "JAX-WS web services",
+            "Java Activation Framework"
+          ],
+          "remediation": "Add required libraries as dependencies. For JAXB add: jakarta.xml.bind:jakarta.xml.bind-api:3.0.1",
+          "migrationEffort": "Medium",
+          "automatable": true
+        },
+        {
+          "severity": "MEDIUM",
+          "category": "Deprecated",
+          "title": "Nashorn JavaScript Engine Deprecated",
+          "description": "Nashorn JavaScript engine deprecated (removed in Java 15)",
+          "impact": "Scripts using Nashorn will receive deprecation warnings",
+          "affectedFeatures": [
+            "JavaScript execution",
+            "Scripting API"
+          ],
+          "remediation": "Migrate to GraalVM JavaScript or alternative scripting engine",
+          "migrationEffort": "High",
+          "automatable": false
+        }
+      ],
+      "newFeatures": [
+        "HTTP/2 client",
+        "Flight Recorder",
+        "Z Garbage Collector (experimental)",
+        "Local-variable syntax for lambda parameters"
+      ]
+    },
+    "17": {
+      "releaseDate": "2021-09-14",
+      "breakingChanges": [
+        {
+          "severity": "HIGH",
+          "category": "Removed APIs",
+          "title": "Security Manager Deprecated for Removal",
+          "description": "Security Manager deprecated and will be removed in future release",
+          "impact": "Applications relying on Security Manager will need migration path",
+          "affectedFeatures": [
+            "Security Manager",
+            "SecurityManager API"
+          ],
+          "remediation": "Plan migration away from Security Manager. Use OS-level security instead.",
+          "migrationEffort": "High",
+          "automatable": false
+        },
+        {
+          "severity": "MEDIUM",
+          "category": "Internal APIs",
+          "title": "Stronger Encapsulation of JDK Internals",
+          "description": "Illegal reflective access to internal APIs blocked by default",
+          "impact": "Libraries using reflection to access internal JDK classes may fail",
+          "affectedFeatures": [
+            "Reflection API",
+            "Internal JDK access"
+          ],
+          "remediation": "Update libraries to use public APIs. Add --add-opens JVM flags as temporary workaround.",
+          "migrationEffort": "Medium",
+          "automatable": false
+        }
+      ],
+      "newFeatures": [
+        "Sealed classes",
+        "Pattern matching for switch",
+        "Foreign Function & Memory API",
+        "Vector API (incubator)"
+      ]
+    },
+    "21": {
+      "releaseDate": "2023-09-19",
+      "breakingChanges": [
+        {
+          "severity": "MEDIUM",
+          "category": "Deprecation",
+          "title": "Thread.stop() Permanently Deprecated",
+          "description": "Thread.stop() throws UnsupportedOperationException",
+          "impact": "Code calling Thread.stop() will fail at runtime",
+          "affectedFeatures": [
+            "Thread API"
+          ],
+          "remediation": "Use cooperative thread interruption instead of Thread.stop()",
+          "migrationEffort": "Medium",
+          "automatable": false
+        }
+      ],
+      "newFeatures": [
+        "Virtual threads",
+        "Sequenced collections",
+        "Pattern matching for switch",
+        "Record patterns"
+      ]
+    }
+  },
+  "compatibilityMatrix": {
+    "geoserver-2.24": {
+      "java": ["8", "11", "17"],
+      "tomcat": ["8.5", "9.0"],
+      "postgresql": ["10", "11", "12", "13", "14", "15"],
+      "postgis": ["2.5", "3.0", "3.1", "3.2", "3.3"]
+    },
+    "geoserver-2.25": {
+      "java": ["11", "17", "21"],
+      "tomcat": ["9.0"],
+      "postgresql": ["12", "13", "14", "15", "16"],
+      "postgis": ["3.0", "3.1", "3.2", "3.3", "3.4"]
+    },
+    "geoserver-2.26": {
+      "java": ["11", "17", "21"],
+      "tomcat": ["9.0"],
+      "postgresql": ["12", "13", "14", "15", "16"],
+      "postgis": ["3.0", "3.1", "3.2", "3.3", "3.4"]
+    }
+  },
+  "securityAdvisories": {
+    "geoserver": [
+      {
+        "cve": "CVE-2023-51445",
+        "severity": "CRITICAL",
+        "cvss": 9.8,
+        "description": "Remote code execution via OGC filter in WFS requests",
+        "affectedVersions": "< 2.23.3, 2.24.0",
+        "fixedVersions": ["2.23.3", "2.24.1"],
+        "published": "2024-01-19",
+        "references": [
+          "https://github.com/geoserver/geoserver/security/advisories/GHSA-example"
+        ]
+      }
+    ],
+    "tomcat": [
+      {
+        "cve": "CVE-2023-46589",
+        "severity": "HIGH",
+        "cvss": 7.5,
+        "description": "HTTP request smuggling vulnerability",
+        "affectedVersions": "9.0.0 - 9.0.82",
+        "fixedVersions": ["9.0.83"],
+        "published": "2023-11-28",
+        "references": [
+          "https://tomcat.apache.org/security-9.html"
+        ]
+      }
+    ]
+  }
+}
