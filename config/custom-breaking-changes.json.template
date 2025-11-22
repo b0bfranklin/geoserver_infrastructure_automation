@@ -1,0 +1,206 @@
+{
+  "_comment": "Custom breaking change detection rules",
+  "_instructions": [
+    "Copy this file to custom-breaking-changes.json to add your own breaking change rules",
+    "These rules will be checked in addition to the standard breaking changes database",
+    "Use this to document organization-specific issues or custom extensions"
+  ],
+  "metadata": {
+    "organization": "Your Organization Name",
+    "maintainer": "Your Name <your.email@example.com>",
+    "lastUpdated": "2024-01-15",
+    "version": "1.0.0"
+  },
+  "customRules": [
+    {
+      "id": "CUSTOM-001",
+      "component": "GeoServer",
+      "targetVersion": "2.25.0",
+      "severity": "HIGH",
+      "category": "Custom Extension",
+      "title": "Example: Custom Authentication Extension",
+      "description": "Your custom authentication extension needs update for GeoServer 2.25",
+      "detectionMethod": {
+        "type": "FileExists",
+        "paths": [
+          "webapps/geoserver/WEB-INF/lib/custom-auth-*.jar"
+        ]
+      },
+      "impact": "Authentication will fail after upgrade if extension not updated",
+      "affectedFeatures": [
+        "User login",
+        "LDAP integration",
+        "Custom authentication flow"
+      ],
+      "remediation": "Update custom-auth extension to version 2.0 or later before upgrading",
+      "migrationEffort": "Medium",
+      "automatable": false,
+      "contacts": [
+        "Internal Dev Team <dev@example.com>",
+        "Vendor Support <support@vendor.com>"
+      ]
+    },
+    {
+      "id": "CUSTOM-002",
+      "component": "GeoServer",
+      "targetVersion": "*",
+      "severity": "MEDIUM",
+      "category": "Data Configuration",
+      "title": "Example: Custom Shapefile Encoding",
+      "description": "Shapefiles in S:\\GISData use non-standard encoding",
+      "detectionMethod": {
+        "type": "ConfigCheck",
+        "dataDirectory": true,
+        "checkFor": "shapefile datastores without explicit charset"
+      },
+      "impact": "Character encoding issues in attribute data after upgrade",
+      "affectedFeatures": [
+        "Shapefiles with special characters",
+        "WFS GetFeature responses"
+      ],
+      "remediation": "Add .cpg files or explicit charset configuration to all shapefile datastores",
+      "migrationEffort": "Low",
+      "automatable": true,
+      "fixScript": "scripts/custom-fixes/fix-shapefile-encoding.ps1"
+    },
+    {
+      "id": "CUSTOM-003",
+      "component": "Integration",
+      "targetVersion": "*",
+      "severity": "CRITICAL",
+      "category": "Application Dependency",
+      "title": "Example: Internal Mapping Application",
+      "description": "Internal web mapping application depends on specific WMS output format",
+      "detectionMethod": {
+        "type": "Manual",
+        "checklistItem": "Verify internal mapping application compatibility"
+      },
+      "impact": "Internal mapping application may not display maps correctly",
+      "affectedFeatures": [
+        "Corporate intranet map viewer",
+        "Mobile field app"
+      ],
+      "remediation": "Test mapping application with new GeoServer version in staging",
+      "testingInstructions": [
+        "Navigate to http://intranet.example.com/map",
+        "Verify all map layers load",
+        "Test search and identify functions",
+        "Check mobile app on iOS and Android"
+      ],
+      "migrationEffort": "Low",
+      "automatable": false,
+      "contacts": [
+        "Web Development Team <webdev@example.com>"
+      ]
+    }
+  ],
+  "environmentSpecificChecks": [
+    {
+      "id": "ENV-001",
+      "name": "Production Data Directory Size",
+      "description": "Ensure sufficient disk space for data directory",
+      "checkType": "DiskSpace",
+      "path": "E:\\GeoServerData",
+      "minimumFreeGB": 50,
+      "severity": "HIGH",
+      "remediation": "Free up disk space or expand volume before upgrade"
+    },
+    {
+      "id": "ENV-002",
+      "name": "Custom GDAL Installation",
+      "description": "Verify custom GDAL installation compatibility",
+      "checkType": "FileExists",
+      "paths": [
+        "C:\\GDAL\\gdal-data",
+        "C:\\GDAL\\bin\\gdal_translate.exe"
+      ],
+      "severity": "MEDIUM",
+      "remediation": "Update GDAL to version compatible with target GeoServer version"
+    }
+  ],
+  "preUpgradeChecklist": [
+    {
+      "category": "Custom Integrations",
+      "items": [
+        "Notify GIS application owners 48 hours in advance",
+        "Verify external WMS clients can tolerate downtime",
+        "Check if any batch jobs run during maintenance window",
+        "Confirm backup storage has sufficient space",
+        "Verify VPN access for remote support if needed"
+      ]
+    },
+    {
+      "category": "Business Continuity",
+      "items": [
+        "Identify critical map services that must be restored first",
+        "Have contact info for business owners of critical services",
+        "Document any SLAs that apply to GeoServer",
+        "Prepare communication for service interruption"
+      ]
+    }
+  ],
+  "postUpgradeTests": [
+    {
+      "id": "POST-001",
+      "name": "Critical Map Service - Emergency Response",
+      "type": "WMS",
+      "url": "http://geoserver.example.com/geoserver/emergency/wms?service=WMS&version=1.3.0&request=GetMap&layers=emergency:incidents&...",
+      "expectedStatusCode": 200,
+      "critical": true,
+      "contacts": ["Emergency Services <emergency@example.com>"]
+    },
+    {
+      "id": "POST-002",
+      "name": "Public Web Map",
+      "type": "Application",
+      "url": "https://maps.example.com/public",
+      "expectedContent": "Map Viewer",
+      "critical": true,
+      "testSteps": [
+        "Load public map page",
+        "Verify base map displays",
+        "Test address search",
+        "Test measure tool",
+        "Check print function"
+      ]
+    }
+  ],
+  "rollbackCriteria": [
+    {
+      "condition": "Any CRITICAL test fails",
+      "action": "Immediate rollback",
+      "description": "Critical services must be functional"
+    },
+    {
+      "condition": "More than 3 HIGH priority tests fail",
+      "action": "Evaluate and decide",
+      "description": "Multiple high priority failures indicate systemic issue"
+    },
+    {
+      "condition": "Customer-facing services down > 15 minutes",
+      "action": "Rollback if not resolved quickly",
+      "description": "SLA requires public services available"
+    }
+  ],
+  "organizationContacts": {
+    "geoserverAdmins": [
+      "Primary Admin <admin1@example.com>",
+      "Secondary Admin <admin2@example.com>"
+    ],
+    "applicationOwners": [
+      "Web Team <webteam@example.com>",
+      "Emergency Services <emergency@example.com>"
+    ],
+    "management": [
+      "IT Manager <manager@example.com>"
+    ],
+    "vendor": [
+      "GeoServer Support <support@vendor.com> - Case #12345"
+    ]
+  },
+  "notes": [
+    "Last upgrade: 2023-12-15 - GeoServer 2.23 to 2.24",
+    "Known issue: Custom print extension requires manual restart after upgrade",
+    "Custom modification: Modified SLD validation to allow vendor-specific tags"
+  ]
+}

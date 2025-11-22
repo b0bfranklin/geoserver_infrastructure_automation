@@ -1,0 +1,130 @@
+{
+  "_comment": "Custom test definitions for baseline testing",
+  "_instructions": "Copy this file to custom-tests.json and customize for your environment",
+  "tests": [
+    {
+      "name": "Custom WMS Layer Test - Roads",
+      "category": "Custom-Layers",
+      "type": "HTTP",
+      "url": "http://localhost:8080/geoserver/wms?service=WMS&version=1.3.0&request=GetMap&layers=topp:states&bbox=-180,-90,180,90&width=768&height=384&srs=EPSG:4326&format=image/png",
+      "expectedStatusCode": 200,
+      "expectedContent": "PNG",
+      "critical": true,
+      "description": "Test WMS GetMap for specific layer"
+    },
+    {
+      "name": "Custom REST API - Workspace List",
+      "category": "Custom-API",
+      "type": "REST",
+      "url": "http://localhost:8080/geoserver/rest/workspaces.json",
+      "method": "GET",
+      "expectedStatusCode": 200,
+      "critical": false,
+      "credentials": {
+        "username": "admin",
+        "password": "geoserver"
+      },
+      "description": "Verify workspaces are accessible via REST"
+    },
+    {
+      "name": "Custom Application Integration",
+      "category": "Integration",
+      "type": "HTTP",
+      "url": "http://your-app.example.com/map",
+      "expectedStatusCode": 200,
+      "expectedContent": "Map",
+      "critical": true,
+      "description": "Test your custom application that consumes GeoServer"
+    },
+    {
+      "name": "Custom Database View",
+      "category": "Database",
+      "type": "Database",
+      "target": "PostgreSQL",
+      "query": "SELECT COUNT(*) FROM your_schema.your_table;",
+      "expectedResult": "> 0",
+      "critical": false,
+      "description": "Verify custom database objects exist"
+    },
+    {
+      "name": "Custom Performance - Large Dataset",
+      "category": "Performance",
+      "type": "ResponseTime",
+      "url": "http://localhost:8080/geoserver/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=your:large_dataset&maxFeatures=1000",
+      "maxResponseTimeMs": 10000,
+      "critical": false,
+      "description": "Ensure large dataset queries remain performant"
+    },
+    {
+      "name": "Custom Extension - Importer",
+      "category": "Extensions",
+      "type": "HTTP",
+      "url": "http://localhost:8080/geoserver/rest/imports",
+      "expectedStatusCode": 200,
+      "critical": false,
+      "credentials": {
+        "username": "admin",
+        "password": "geoserver"
+      },
+      "description": "Verify importer extension is functional"
+    },
+    {
+      "name": "Custom Security - LDAP Auth",
+      "category": "Security",
+      "type": "HTTP",
+      "url": "http://localhost:8080/geoserver/web/",
+      "expectedStatusCode": 200,
+      "critical": true,
+      "credentials": {
+        "username": "ldap_user",
+        "password": "ldap_password"
+      },
+      "description": "Test LDAP authentication integration"
+    },
+    {
+      "name": "Custom Backup Location",
+      "category": "FileSystem",
+      "type": "PathCheck",
+      "target": "E:\\Backups\\GeoServer",
+      "critical": false,
+      "description": "Verify backup location is accessible"
+    }
+  ],
+  "baseline_comparisons": [
+    {
+      "name": "Layer Count",
+      "description": "Compare number of published layers",
+      "api_endpoint": "/geoserver/rest/layers.json",
+      "extract_value": "layers.layer.length",
+      "alert_on_change": true
+    },
+    {
+      "name": "Workspace Count",
+      "description": "Compare number of workspaces",
+      "api_endpoint": "/geoserver/rest/workspaces.json",
+      "extract_value": "workspaces.workspace.length",
+      "alert_on_change": true
+    }
+  ],
+  "manual_verification_steps": [
+    {
+      "category": "Your Custom Category",
+      "items": [
+        "Custom verification step 1",
+        "Custom verification step 2",
+        "Custom verification step 3"
+      ]
+    }
+  ],
+  "email_settings": {
+    "default_recipients": [
+      "gis-team@example.com",
+      "devops@example.com"
+    ],
+    "cc_recipients": [
+      "manager@example.com"
+    ],
+    "subject_prefix": "[GeoServer]",
+    "include_screenshots": false
+  }
+}

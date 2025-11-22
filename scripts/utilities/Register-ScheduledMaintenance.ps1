@@ -202,6 +202,20 @@ function Get-TaskConfiguration {
             ScriptPath = Join-Path $script:WorkingDirectory "scripts\core\Get-GeoServerHealth.ps1"
             Arguments = "-OutputFormat HTML -SendEmail"
         }
+
+        ConfigurationAnalysis = @{
+            Name = "$($script:TaskPrefix)ConfigAnalysis"
+            Description = "Weekly configuration analysis and compatibility check"
+            ScriptPath = Join-Path $script:WorkingDirectory "scripts\utilities\Invoke-ConfigurationAnalysis.ps1"
+            Arguments = "-AnalysisDepth Quick -CheckSecurity -OutputFormat HTML"
+        }
+
+        BaselineTest = @{
+            Name = "$($script:TaskPrefix)BaselineTest"
+            Description = "Monthly baseline testing and comparison"
+            ScriptPath = Join-Path $script:WorkingDirectory "scripts\utilities\Invoke-BaselineTests.ps1"
+            Arguments = "-Mode CompareBaseline -BaselineName production-baseline -TestProfile Standard"
+        }
     }
 
     return $configs[$Type]
